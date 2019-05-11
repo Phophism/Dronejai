@@ -1,0 +1,5 @@
+objective:
+- plot graph
+- button react faster
+	if(press==true) return nextPlace; ---> write outside main loop 
+	[put it in every method or action]

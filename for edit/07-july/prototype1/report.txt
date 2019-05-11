@@ -1,0 +1,3 @@
+06-june-2017
+-process ของ โมดูลไม่มีปัญหา (<1000ms)
+-transmission ของทุก module ใช้เวลา >1500ms 

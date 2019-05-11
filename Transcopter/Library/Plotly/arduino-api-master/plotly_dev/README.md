@@ -1,0 +1,1 @@
+Interested in contributing? Contribute to the *.pre.* files and automatically generate the libraries for each client type by running `$ python render.py`. 
