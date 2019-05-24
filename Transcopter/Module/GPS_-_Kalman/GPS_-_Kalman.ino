@@ -1,11 +1,12 @@
 #include <NMEAGPS.h>
 #include <SoftwareSerial.h>
+#include <AltSoftSerial.h>
 #include <SPI.h>
-#include <nRF24L01p.h>
+// #include <nRF24L01p.h> // Transmtiter 2.4 GH
 
-SoftwareSerial GPSModule(10,11); // TX, RX
+AltSoftSerial GPSModule(8,9); // RX , TX
 NMEAGPS gps;
-nRF24L01p transmitter(7, 6); //CSN,CE
+// nRF24L01p transmitter(7, 6); //CSN,CE
 
 int updates;
 int failedUpdates;
@@ -77,20 +78,21 @@ void loop() {
 //    Xe1 = Xe0; //Update: current t=0 becomes t=1 in the next step
 //    P1 = P0; //Update: current t=0 becomes t=1 in the next step
 
-    nmea[1]=nmea[1].toFloat();
-
-    Serial.print(nmea[1]);
-    Serial.print(",");
-//    Serial.print(Xe0 * 10,4);
+//    float latt = nmea[1].toFloat();
+//    long latitude = (long)(latt*100000.0);
+//    
+//    Serial.print(latt);
+//    Serial.print(",");
+//    Serial.print(latitude);
 //    Serial.println("");
  
     
-//    Serial.print(nmea[1]);
-//    Serial.print(",");
-//    Serial.print(nmea[3]);
-//    Serial.print(",");
-//    Serial.print(nmea[8]);
-//    Serial.println("");
+    Serial.print(nmea[1]);
+    Serial.print(",");
+    Serial.print(nmea[3]);
+    Serial.print(",");
+    Serial.print(nmea[8]);
+    Serial.println("");
   }
   else {
     Serial.println("Can't find GPS signal");
@@ -157,4 +159,3 @@ String ConvertLng() {
   lngfirst = posneg += lngfirst;
   return lngfirst;
 }
-
