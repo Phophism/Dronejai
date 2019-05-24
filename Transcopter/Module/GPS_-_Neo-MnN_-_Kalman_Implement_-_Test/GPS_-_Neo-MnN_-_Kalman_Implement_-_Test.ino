@@ -11,27 +11,41 @@ int pos; // Next element
 int stringplace = 0; // Next char
 
 double resultLat ; 
-double resultLong ; 
+double resultLng ; 
 double resultAlt ;
+
+// ----------------------- Kalman variables ALT ---------------------//
+
+float R_alt = 20, Q_alt  = 1e-4;  //Q = process noise covariance, R = measurement noise covariance
+double Xpe0_alt  = 0;  // Xpe0 = prior estimation of signal X at time t=0 (current state)
+double Xe1_alt  = 0;  //Xe1 = estimation of X at time t=1 (previous state)
+double Ppe0_alt  = 0.0;  //Ppe0 = prior estimation of "error covariance" at t=0,  
+double P1_alt  = 1, P0_alt  = 0; //P1 = error covariance at t=1, P0 = error covariance at t=0
+double  K_alt  = 0.0, Xe0_alt  = 0.0, Z_alt  = 0.0; //K = Kalman gain, Xe0 = estimation of signal at t=0, Z = measured signal at t=0
+
+double kalmanAlt ;
 
 // ----------------------- Kalman variables LAT ---------------------//
 
-float R = 20, Q = 0.001;  //Q = process noise covariance, R = measurement noise covariance
-double Xpe0 = 0;  // Xpe0 = prior estimation of signal X at time t=0 (current state)
-double Xe1 = 0;  //Xe1 = estimation of X at time t=1 (previous state)
-double Ppe0 = 0.0;  //Ppe0 = prior estimation of "error covariance" at t=0,  
-double P1 = 1, P0 = 0; //P1 = error covariance at t=1, P0 = error covariance at t=0
-double  K = 0.0, Xe0 = 0.0, Z = 0.0; //K = Kalman gain, Xe0 = estimation of signal at t=0, Z = measured signal at t=0
+float R_lat = 4.464e-10, Q_lat = 1e-11;  //Q = process noise covariance, R = measurement noise covariance
+double Xpe0_lat = 0.0;  // Xpe0 = prior estimation of signal X at time t=0 (current state)
+double Xe1_lat = 0.0;  //Xe1 = estimation of X at time t=1 (previous state)
+double Ppe0_lat = 0.0;  //Ppe0 = prior estimation of "error covariance" at t=0,  
+double P1_lat = 1, P0_lat = 0; //P1 = error covariance at t=1, P0 = error covariance at t=0
+double  K_lat = 0.0, Xe0_lat = 0.0, Z_lat = 0.0; //K = Kalman gain, Xe0 = estimation of signal at t=0, Z = measured signal at t=0
 
-double kalmanAlt ;
+double kalmanLat ;
+
 // ----------------------- Kalman variables LNG ---------------------//
 
-//float R = 2353e-13, Q = 1e-11;  //Q = process noise covariance, R = measurement noise covariance
-//double Xpe0 = 0.0;  // Xpe0 = prior estimation of signal X at time t=0 (current state)
-//double Xe1 = 0.0;  //Xe1 = estimation of X at time t=1 (previous state)
-//double Ppe0 = 0.0;  //Ppe0 = prior estimation of "error covariance" at t=0,  
-//double P1 = 1, P0 = 0; //P1 = error covariance at t=1, P0 = error covariance at t=0
-//double  K = 0.0, Xe0 = 0.0, Z = 0.0; //K = Kalman gain, Xe0 = estimation of signal at t=0, Z = measured signal at t=0
+float R_lng = 1.397e-10, Q_lng = 1e-11;  //Q = process noise covariance, R = measurement noise covariance
+double Xpe0_lng = 0.0;  // Xpe0 = prior estimation of signal X at time t=0 (current state)
+double Xe1_lng = 0.0;  //Xe1 = estimation of X at time t=1 (previous state)
+double Ppe0_lng = 0.0;  //Ppe0 = prior estimation of "error covariance" at t=0,  
+double P1_lng = 1, P0_lng = 0; //P1 = error covariance at t=1, P0 = error covariance at t=0
+double  K_lng = 0.0, Xe0_lng = 0.0, Z_lng = 0.0; //K = Kalman gain, Xe0 = estimation of signal at t=0, Z = measured signal at t=0
+
+double kalmanLng ;
 
 // ------------------------- Setup -------------------------- // 
 
@@ -54,9 +68,15 @@ void setup(){
         nmea[pos] = tempMsg.substring(stringplace, i);
       }
     }
+  }
+  nmea[1] = ConvertLat();
+  nmea[3] = ConvertLng();
+
+  Xe1_lat  = strToDouble(nmea[1]); 
+  Xe1_lng  = strToDouble(nmea[3]); 
+  Xe1_alt  = strToDouble(nmea[8]); 
+  
 }
- Xe1 = strToDouble(nmea[8]); 
- }
 
 // ---------------------- Loop ------------------------- //
 
@@ -80,32 +100,70 @@ void loop(){
         nmea[pos] = tempMsg.substring(stringplace, i);
       }
     }
-    nmea[1] = ConvertLat();
-    nmea[3] = ConvertLng();
-}
-  
+  }
+  nmea[1] = ConvertLat();
+  nmea[3] = ConvertLng();
+    
   resultLat = strToDouble(nmea[1]); 
-  resultLong = strToDouble(nmea[3]); 
+  resultLng = strToDouble(nmea[3]); 
   resultAlt = strToDouble(nmea[8]); 
 
-  Z = resultAlt ;
-  Xpe0 = Xe1; //Assumption or prediction 1
-  Ppe0 = P1 + Q; //Assumption or prediction 2
-  K = Ppe0/(Ppe0 + R); // Measurement update or correction of "Kalman gain"
-  Xe0 = Xpe0 + K * (Z - Xpe0); // Measurement update or correction of "estimated signal"
-  P0 = (1 - K) * Ppe0; // Measurement update or correction of "error covariance"
-  kalmanAlt = Xe0;
-  Xe1 = Xe0; //Update: current t=0 becomes t=1 in the next step
-  P1 = P0; //Update: current t=0 becomes t=1 in the next step
-  delay(20);
+//----------------------------- Kalman Altitude ----------------------//
+
+  Z_alt  = resultAlt ;
+  Xpe0_alt  = Xe1_alt ; //Assumption or prediction 1
+  Ppe0_alt  = P1_alt  + Q_alt ; //Assumption or prediction 2
+  K_alt  = Ppe0_alt /(Ppe0_alt  + R_alt ); // Measurement update or correction of "Kalman gain"
+  Xe0_alt  = Xpe0_alt  + K_alt  * (Z_alt  - Xpe0_alt); // Measurement update or correction of "estimated signal"
+  P0_alt  = (1 - K_alt ) * Ppe0_alt ; // Measurement update or correction of "error covariance"
+  kalmanAlt = Xe0_alt ;
+  Xe1_alt  = Xe0_alt ; //Update: current t=0 becomes t=1 in the next step
+  P1_alt  = P0_alt ; //Update: current t=0 becomes t=1 in the next step
+  delay(10);
+
+  //------------------------ Kalman Latitude -----------------------------//
+
+  Z_lat  = resultLat ;
+  Xpe0_lat  = Xe1_lat ; //Assumption or prediction 1
+  Ppe0_lat  = P1_lat  + Q_lat ; //Assumption or prediction 2
+  K_lat  = Ppe0_lat /(Ppe0_lat  + R_lat ); // Measurement update or correction of "Kalman gain"
+  Xe0_lat  = Xpe0_lat  + K_lat  * (Z_lat  - Xpe0_lat); // Measurement update or correction of "estimated signal"
+  P0_lat  = (1 - K_lat ) * Ppe0_lat ; // Measurement update or correction of "error covariance"
+  kalmanLat = Xe0_lat ;
+  Xe1_lat  = Xe0_lat ; //Update: current t=0 becomes t=1 in the next step
+  P1_lat  = P0_lat ; //Update: current t=0 becomes t=1 in the next step
+  delay(10);
+  
+  //------------------------ Kalman Longitude -----------------------------//
+  
+  Z_lng  = resultLng ;
+  Xpe0_lng  = Xe1_lng ; //Assumption or prediction 1
+  Ppe0_lng  = P1_lng  + Q_lng ; //Assumption or prediction 2
+  K_lng  = Ppe0_lng /(Ppe0_lng  + R_lng ); // Measurement update or correction of "Kalman gain"
+  Xe0_lng  = Xpe0_lng  + K_lng  * (Z_lng  - Xpe0_lng); // Measurement update or correction of "estimated signal"
+  P0_lng  = (1 - K_lng ) * Ppe0_lng ; // Measurement update or correction of "error covariance"
+  kalmanLng = Xe0_lng ;
+  Xe1_lng  = Xe0_lng ; //Update: current t=0 becomes t=1 in the next step
+  P1_lng  = P0_lng ; //Update: current t=0 becomes t=1 in the next step
+  delay(10);
+
+ //-------------------------Print out result---------------------------//
     
 //  Serial.print(resultLat,6);
 //  Serial.print(" , ");
 //  Serial.print(resultLong,6);
-  Serial.print(resultAlt,1);
-    Serial.print(",");
-   Serial.println(Xe0, 4);
 
+  Serial.print(resultLat,6);
+  Serial.print(",");
+  Serial.print(Xe0_lat, 6);
+  Serial.print(",");
+  Serial.print(resultLng,6);
+  Serial.print(",");
+  Serial.print(Xe0_lng, 6);
+  Serial.print(",");
+  Serial.print(resultAlt,1);
+  Serial.print(",");
+  Serial.println(Xe0_alt, 4);
 }
 
 // --------------- String to double ---------------- //
